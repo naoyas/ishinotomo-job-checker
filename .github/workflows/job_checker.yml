@@ -1,28 +1,28 @@
-name: Job Checker (JST 13:00 daily)
+name: Job Checker (毎日 0:01 JST)
 
 on:
   schedule:
-    # GitHub ActionsのcronはUTC。JST 13:00 は UTC 04:00（日本はDSTなし）
-    - cron: "0 4 * * *"
+    # GitHub Actions の cron は UTC
+    # JST 0:01 → UTC 前日15:01
+    - cron: "1 15 * * *"
   workflow_dispatch: {}
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run checker
+      - name: Run job checker
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: python job_checker.py
