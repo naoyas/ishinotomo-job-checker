@@ -1,5 +1,4 @@
-# 必要ライブラリ
-!pip install requests bs4
+# job_checker.py
 
 import requests
 from bs4 import BeautifulSoup
@@ -61,7 +60,7 @@ def fetch_mynavi_jobs(target_date):
         title_tag = job.find("h2", class_="job-title")
         title = title_tag.get_text(strip=True) if title_tag else "タイトル不明"
 
-        # === 追加: 「産業医」を含まないタイトルはスキップ ===
+        # 「産業医」を含むタイトルのみ
         if "産業医" not in title:
             continue
 
@@ -141,7 +140,7 @@ if __name__ == "__main__":
     # 前日の日付を基準に
     baseline = now - timedelta(days=1)
 
-    SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")  # Colabでは事前に環境変数に登録
+    SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
     dr_jobs = fetch_dr_jobs(baseline)
     mynavi_jobs = fetch_mynavi_jobs(baseline)
@@ -166,5 +165,6 @@ if __name__ == "__main__":
                 message += "-"*30 + "\n"
         else:
             message += "新着求人はありませんでした。\n"
+
         print(message)
         notify_slack(message, SLACK_WEBHOOK_URL)
