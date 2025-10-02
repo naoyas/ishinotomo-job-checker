@@ -133,6 +133,54 @@ def fetch_doctor_agent_jobs(target_date):
             })
     return jobs
 
+# === マイナビ看護師（産業保健師） ===
+def fetch_mynavi_nurse_jobs(target_date):
+    url = "https://kango.mynavi.jp/r/wk_0401/"
+    res = requests.get(url)
+    res.encoding = res.apparent_encoding
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    jobs = []
+    for card in soup.select("div.job-card"):
+        # 企業名
+        corp = card.select_one("p.corporate-name")
+        corp_name = corp.get_text(strip=True) if corp else "企業名不明"
+
+        # タイトル（勤務地名など）
+        title_tag = card.select_one("h2.job-name")
+        title = title_tag.get_text(strip=True) if title_tag else "タイトル不明"
+
+        # 求人番号と更新日
+        update_li = card.select_one("li.update_time")
+        update_date = None
+        if update_li:
+            try:
+                update_str = update_li.get_text(strip=True).replace("更新日:", "").replace("更新日：", "").strip()
+                update_date = datetime.strptime(update_str, "%Y年%m月%d日").date()
+            except:
+                try:
+                    update_date = datetime.strptime(update_str, "%Y-%m-%d").date()
+                except:
+                    pass
+
+        job_no_li = card.select_one("li.job_number")
+        job_no = job_no_li.get_text(strip=True).replace("求人番号:", "").replace("求人番号：", "").strip() if job_no_li else ""
+
+        # 求人詳細ページURL
+        link_tag = card.select_one("a.link-area")
+        link = "https://kango.mynavi.jp" + link_tag["href"] if link_tag else None
+
+        if update_date and update_date == target_date.date():
+            jobs.append({
+                "corp": corp_name,
+                "title": title,
+                "job_no": job_no,
+                "url": link,
+                "update_date": update_date
+            })
+    return jobs
+
+
 # === メイン処理 ===
 if __name__ == "__main__":
     JST = timezone(timedelta(hours=9))
@@ -145,11 +193,13 @@ if __name__ == "__main__":
     dr_jobs = fetch_dr_jobs(baseline)
     mynavi_jobs = fetch_mynavi_jobs(baseline)
     agent_jobs = fetch_doctor_agent_jobs(baseline)
+    mynavi_nurse_jobs = fetch_mynavi_nurse_jobs(baseline)
 
     all_jobs = [
         ("dRサイト", dr_jobs),
         ("マイナビDOCTOR", mynavi_jobs),
-        ("Doctor Agent", agent_jobs)
+        ("Doctor Agent", agent_jobs),
+        ("マイナビ看護師", mynavi_nurse_jobs),
     ]
 
     for site_name, jobs in all_jobs:
@@ -157,8 +207,12 @@ if __name__ == "__main__":
         if jobs:
             for j in jobs:
                 message += f"タイトル: {j.get('title')}\n"
+                if j.get("corp"):
+                    message += f"企業名: {j.get('corp')}\n"
+                if j.get("job_no"):
+                    message += f"求人番号: {j.get('job_no')}\n"
                 message += f"URL: {j.get('url')}\n"
-                message += f"更新日: {j.get('updated') or j.get('update_date')}\n"
+                message += f"更新日: {j.get('update_date') or j.get('updated')}\n"
                 if "details" in j:
                     for k, v in j["details"].items():
                         message += f"{k}: {v}\n"
